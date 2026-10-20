@@ -1,5 +1,11 @@
 import pandas as pd
+import plotly.express as px
+import plotly.io as pio
 
+# Choose the renderer that matches your environment:
+pio.renderers.default = (
+    "browser"  # Opens in your default system browser (Firefox/Chrome)
+)
 BASE_URL = "https://github.com/nflverse/nflverse-data/releases/download"
 
 
@@ -37,12 +43,6 @@ def get_players():
     df.to_parquet("data/players.parquet")
 
 
-# Participation data for plays from NGS (starts from 2016)
-def get_pbp_participation(year=2025):
-    df = pd.read_parquet(f"{BASE_URL}/pbp_participation/pbp_participation_{year}.parquet")
-    df.to_parquet(f"data/pbp_participation/pbp_participation_{year}.parquet")
-
-
 # Data about which referees and officials were assigned to specific games.
 def get_officials():
     df = pd.read_parquet(f"{BASE_URL}/officials/officials.parquet")
@@ -50,17 +50,60 @@ def get_officials():
 
 # Play by play data
 # From 1999 to present
-def get_play_by_play(year=2026):
+def get_pbp(year=2026):
     df = pd.read_parquet(f"{BASE_URL}/pbp/play_by_play_{year}.parquet")
     df.to_parquet(f"data/pbp/play_by_play_{year}.parquet")
+
+
+# Participation data for plays from NGS (starts from 2016)
+def get_pbp_participation(year=2026):
+    print(f"Getting play-by-play participation for {year}...")
+    df = pd.read_parquet(f"{BASE_URL}/pbp_participation/pbp_participation_{year}.parquet")
+    df.to_parquet(f"data/pbp_participation/pbp_participation_{year}.parquet")
+    print(f"{year} play-by-play participation saved to parquet in data/pbp_participation")
+
+
+# Injuries data (2009-present)
+def get_injuries(year=2026):
+    print(f"Getting injuries for {year}...")
+    df = pd.read_parquet(f"{BASE_URL}/injuries/injuries_{year}.parquet")
+    df.to_parquet(f"data/injuries/injuries_{year}.parquet")
+    print(f"{year} injuries saved to parquet in data/injuries")
 
 
 def print_df_columns(dataframe):
     for col in dataframe.columns:
         print(col)
 
+data = pd.read_parquet("data/pbp/play_by_play_2025.parquet")
+flags_data = data[data["penalty"] == 1].copy()
+flags_data = flags_data[flags_data["qtr"].isin([1, 2, 3, 4, 5])]
+flags_data["qtr"] = flags_data["qtr"].astype("int")
 
-get_play_by_play()
+fig = px.histogram(
+    flags_data,
+    x="qtr",
+    title="Total NFL Flags Thrown by Quarter (2025)",
+    labels={"qtr": "Quarter", "count": "Flags Thrown"},
+    color_discrete_sequence=["#013369"],  # NFL Blue
+)
+
+# 4. Format axes and layout
+fig.update_xaxes(
+    type="category",
+    tickvals=[1, 2, 3, 4, 5],
+    ticktext=["Q1", "Q2", "Q3", "Q4", "OT"],
+)
+
+fig.update_layout(
+    xaxis_title="Quarter",
+    yaxis_title="Number of Flags",
+    bargap=0.15,
+    template="plotly_white",
+)
+
+# Render figure
+fig.write_image("nfl_flags_2025.png")
 
 # # Filter for penalty plays
 # penalty_plays = df[df["penalty"] == 1][
