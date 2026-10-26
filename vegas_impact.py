@@ -5,8 +5,9 @@ import plotly.express as px
 
 pd.set_option("display.max_columns", None)
 
-# 1. Load PBP Data and convert to Pandas
-years = list(range(2015, 2027))
+START_DATE = 2016
+# Load PBP Data and convert to Pandas
+years = list(range(START_DATE, 2027))
 df = nfl.load_pbp(years).to_pandas()
 
 # Filter regular season plays with valid score differentials and spreads
@@ -17,7 +18,7 @@ df_reg = df[
     & (df["posteam"].notna())
 ].copy()
 
-# 2. Key Judgment Penalties (DPI, Roughing, Holding)
+# Key Judgment Penalties (PI, Roughing, Holding)
 penalty_pattern = "Roughing the Passer|Pass Interference|Holding"
 df_reg["is_key_penalty"] = (df_reg["penalty"] == 1) & (
     df_reg["penalty_type"].str.contains(penalty_pattern, case=False, na=False)
@@ -168,5 +169,5 @@ fig.add_hline(
 )
 
 fig.update_xaxes(dtick=1)
-fig.write_html("yearly_spread_bias_trend_1999_present.html")
-print("\nSaved trend line chart to 'yearly_spread_bias_trend_1999_present.html'")
+fig.write_html(f"yearly_spread_bias_trend_{START_DATE}_present.html")
+print(f"\nSaved trend line chart to 'yearly_spread_bias_trend_{START_DATE}_present.html'")

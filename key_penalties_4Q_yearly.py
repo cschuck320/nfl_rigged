@@ -45,7 +45,7 @@ pivot_key = yearly_summary.pivot(
 print("--- ALL PENALTIES: Flags per 100 Plays by Quarter & Year ---")
 print(pivot_all.round(2))
 
-print("\n--- KEY PENALTIES (DPI, Roughing, Holding): Flags per 100 Plays ---")
+print("\n--- KEY PENALTIES (PI, Roughing, Holding): Flags per 100 Plays ---")
 print(pivot_key.round(2))
 
 # Faceted bar charts: One panel per season, placed side-by-side

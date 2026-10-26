@@ -5,14 +5,14 @@ import plotly.express as px
 
 pd.set_option("display.max_columns", None)
 
-# 1. Load PBP Data & Game Schedules (2016–2026)
+# Load PBP Data & Game Schedules (2016–2026)
 years = list(range(2016, 2027))
 df = nfl.load_pbp(years).to_pandas()
 
 # Load schedule metadata to map Head Referees (Crews) by game_id
 schedules = nfl.load_schedules(years).to_pandas()
 ref_map = schedules[["game_id", "referee"]].drop_duplicates().dropna(subset=["referee"])
-
+print(ref_map.head(10))
 # Filter regular season plays with valid score differentials and spreads
 df_reg = df[
     (df["season_type"] == "REG")
