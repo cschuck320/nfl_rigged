@@ -1,119 +1,83 @@
 import pandas as pd
-import plotly.express as px
+import numpy as np
 import plotly.io as pio
+import nflreadpy as nfl
+from nflreadpy.config import update_config
 
-# Choose the renderer that matches your environment:
-pio.renderers.default = (
-    "browser"  # Opens in your default system browser (Firefox/Chrome)
+pd.set_option("display.max_columns", None)
+pd.set_option("display.max_rows", None)
+update_config(
+    cache_mode="memory",
+    cache_dir="~/.cache/nflreadpy",
+    cache_duration=86400,
+    verbose=False,
+    timeout=30,
+    user_agent="nflreadpy/v0.1.1"
 )
-BASE_URL = "https://github.com/nflverse/nflverse-data/releases/download"
 
-
-# NFL team names, colors, logo urls, and more.
-# Docs: https://nflfastr.com/reference/teams_colors_logos.html
-def get_team_colors_logos():
-    df = pd.read_parquet(f"{BASE_URL}/teams/teams_colors_logos.parquet")
-    df.to_parquet("data/teams_colors_logos.parquet")
-
-
-# NFL game/schedule data.
-# Docs: https://nflreadr.nflverse.com/articles/dictionary_schedules.html
-def get_games():
-    df = pd.read_parquet(f"{BASE_URL}/schedules/games.parquet")
-    df.to_parquet("data/games.parquet")
-
-# Week-level rosters via NFL Shield v2 API, dating back to 2002.
-def get_weekly_rosters(year=2026):
-    df = pd.read_parquet(f"{BASE_URL}/weekly_rosters/roster_weekly_{year}.parquet")
-    df.to_parquet(f"data/weekly_rosters_{year}.parquet")
-
-# Component files for nflverse players build
-def get_players_components():
-    # OTC
-    df_otc = pd.read_parquet(f"{BASE_URL}/players_components/otc_players.parquet")
-    df_otc.to_parquet("data/otc_players.parquet")
-    # Players
-    df_players = pd.read_parquet(f"{BASE_URL}/players_components/players.parquet")
-    df_players.to_parquet("data/players_components.parquet")
-
-
-# Player information for nflverse. This should be the go-to for position and ID mappings going forward.
 def get_players():
-    df = pd.read_parquet(f"{BASE_URL}/players/players.parquet")
-    df.to_parquet("data/players.parquet")
+    print("Getting player data...")
+    return nfl.load_players().to_pandas()
 
 
 # Data about which referees and officials were assigned to specific games.
 def get_officials():
-    df = pd.read_parquet(f"{BASE_URL}/officials/officials.parquet")
-    df.to_parquet("data/officials.parquet")
+    # Get referee data
+    df = nfl.load_officials().to_pandas()
+    pivot_df = df.pivot(index="game_id", columns="position", values="official_name")
+    # Drops any column where "Alternate" appears in the column name or MultiIndex tuple
+    pivot_df = (pivot_df
+                .drop(columns=[col for col in pivot_df.columns if "Alternate" in str(col)])
+                .reset_index()
+                .rename_axis(columns=None)
+                .sort_values(by=["game_id"], ascending=True)
+                )
+    pivot_df = pivot_df.drop(columns=["AL", "RA", "Replay Official"])
+    # Fill missing Down Judge values with Head Linesman values
+    pivot_df["Down Judge"] = pivot_df["Down Judge"].fillna(pivot_df["Head Linesman"])
+    # Drop the now-redundant Head Linesman column
+    pivot_df = pivot_df.drop(columns=["Head Linesman"])
+    # Fill remaining negligible nulls with a string placeholder
+    minor_missing_cols = ["Field Judge", "Line Judge", "Umpire", "Down Judge"]
+    pivot_df[minor_missing_cols] = pivot_df[minor_missing_cols].fillna("Unknown")
+    return pivot_df
 
-# Play by play data
-# From 1999 to present
-def get_pbp(year=2026):
-    df = pd.read_parquet(f"{BASE_URL}/pbp/play_by_play_{year}.parquet")
-    df.to_parquet(f"data/pbp/play_by_play_{year}.parquet")
+
+# Play by play data from 1999 to present
+def get_pbp(start_date, end_date):
+    print(f"Getting play-by-play data from {start_date} to {end_date}...")
+    years = list(range(start_date, end_date+1))
+    return nfl.load_pbp(years).to_pandas()
 
 
 # Participation data for plays from NGS (starts from 2016)
-def get_pbp_participation(year=2026):
-    print(f"Getting play-by-play participation for {year}...")
-    df = pd.read_parquet(f"{BASE_URL}/pbp_participation/pbp_participation_{year}.parquet")
-    df.to_parquet(f"data/pbp_participation/pbp_participation_{year}.parquet")
-    print(f"{year} play-by-play participation saved to parquet in data/pbp_participation")
+def get_pbp_participation(start_date, end_date):
+    print(f"Getting play-by-play participation from {start_date} to {end_date}...")
+    years = list(range(start_date, end_date + 1))
+    return nfl.load_participation(years).to_pandas()
 
 
-# Injuries data (2009-present)
-def get_injuries(year=2026):
-    print(f"Getting injuries for {year}...")
-    df = pd.read_parquet(f"{BASE_URL}/injuries/injuries_{year}.parquet")
-    df.to_parquet(f"data/injuries/injuries_{year}.parquet")
-    print(f"{year} injuries saved to parquet in data/injuries")
+def get_schedules(start_date, end_date):
+    print(f"Getting schedules from {start_date} to {end_date}...")
+    years = list(range(start_date, end_date+1))
+    return nfl.load_schedules(years).to_pandas()
+
+
+def agg_game_info(start_date, end_date):
+    # Aggregate game info including each ref and the money lines
+    schedules = get_schedules(start_date, end_date)
+    officials = get_officials()
+    officials = officials.rename(columns={"game_id": "old_game_id"})
+    return pd.merge(officials, schedules, on="old_game_id")
+
+
+def agg_game_info_pbp(start_date, end_date):
+    merge_cols = ["game_id", "old_game_id", "season", "week", "away_team", "away_score", "home_team", "home_score", "location", "result", "total", "spread_line", "total_line", "div_game", "roof", "surface", "temp", "wind", "away_coach", "home_coach", "stadium_id", "stadium"]
+    return pd.merge(agg_game_info(start_date, end_date), get_pbp(start_date, end_date), on=merge_cols)
 
 
 def print_df_columns(dataframe):
+    # For finding the columns in a query.
     for col in dataframe.columns:
         print(col)
 
-data = pd.read_parquet("data/pbp/play_by_play_2025.parquet")
-flags_data = data[data["penalty"] == 1].copy()
-flags_data = flags_data[flags_data["qtr"].isin([1, 2, 3, 4, 5])]
-flags_data["qtr"] = flags_data["qtr"].astype("int")
-
-fig = px.histogram(
-    flags_data,
-    x="qtr",
-    title="Total NFL Flags Thrown by Quarter (2025)",
-    labels={"qtr": "Quarter", "count": "Flags Thrown"},
-    color_discrete_sequence=["#013369"],  # NFL Blue
-)
-
-# 4. Format axes and layout
-fig.update_xaxes(
-    type="category",
-    tickvals=[1, 2, 3, 4, 5],
-    ticktext=["Q1", "Q2", "Q3", "Q4", "OT"],
-)
-
-fig.update_layout(
-    xaxis_title="Quarter",
-    yaxis_title="Number of Flags",
-    bargap=0.15,
-    template="plotly_white",
-)
-
-# Render figure
-fig.write_image("nfl_flags_2025.png")
-
-# # Filter for penalty plays
-# penalty_plays = df[df["penalty"] == 1][
-#     [
-#         "game_id",
-#         "desc",
-#         "penalty_type",
-#         "penalty_team",
-#         "penalty_player_name",
-#         "penalty_yards",
-#     ]
-# ]
-# print(penalty_plays.head())

@@ -12,7 +12,8 @@ df = nfl.load_pbp(years).to_pandas()
 
 # Filter regular season plays with valid score differentials and spreads
 df_reg = df[
-    (df["qtr"].isin([1, 2, 3, 4]))
+    (df["game_type"] == "REG")
+    & df["qtr"].isin([1, 2, 3, 4])
     & (df["score_differential"].notna())
     & (df["spread_line"].notna())
     & (df["posteam"].notna())
