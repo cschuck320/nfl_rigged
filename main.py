@@ -11,7 +11,7 @@ def main():
     fig_vegas = vi.key_flags_benefiting_trailing_teams(df, start_year, end_year)
 
     # Combine all figures into a single HTML file
-    file_path_name = "all_data.html"
+    file_path_name = "data/all_data.html"
     with open(file_path_name, "w", encoding="utf-8") as f:
         f.write("<html><head><title>NFL Penalty Analysis</title></head><body>\n")
         f.write(fig_facet.to_html(full_html=False, include_plotlyjs="cdn"))
