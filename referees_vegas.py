@@ -26,13 +26,13 @@ df_reg = df[
 df_reg = df_reg.merge(ref_map, on="game_id", how="left")
 df_reg = df_reg[df_reg["referee"].notna()].copy()
 
-# 2. Key Judgment Penalties (DPI, Roughing, Holding)
+# Key Judgment Penalties (DPI, Roughing, Holding)
 penalty_pattern = "Roughing the Passer|Pass Interference|Holding"
 df_reg["is_key_penalty"] = (df_reg["penalty"] == 1) & (
     df_reg["penalty_type"].str.contains(penalty_pattern, case=False, na=False)
 )
 
-# 3. Calculate Live Cover Margin for Possession Team (posteam)
+# Calculate Live Cover Margin for Possession Team (posteam)
 df_reg["posteam_cover_margin"] = np.where(
     df_reg["posteam"] == df_reg["home_team"],
     df_reg["score_differential"] - df_reg["spread_line"],
@@ -49,7 +49,7 @@ df_reg["posteam_cover_status"] = np.where(
     ),
 )
 
-# 4. Identify Penalty Beneficiary Team & Cover Margin
+# Identify Penalty Beneficiary Team & Cover Margin
 df_reg["beneficiary_team"] = np.where(
     df_reg["penalty_team"] == df_reg["defteam"],
     df_reg["posteam"],

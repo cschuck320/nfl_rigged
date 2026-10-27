@@ -19,7 +19,7 @@ fig = px.histogram(
     color_discrete_sequence=["#013369"],  # NFL Blue
 )
 
-# 4. Format axes and layout
+# Format axes and layout
 fig.update_xaxes(
     type="category",
     tickvals=[1, 2, 3, 4, 5],

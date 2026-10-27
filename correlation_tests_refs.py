@@ -56,7 +56,7 @@ def create_target_variables(df):
 
 
 def chi2_test():
-    agg_df = gat.agg_game_info(2016, 2026)
+    agg_df = gat.agg_game_info(2025, 2026)
     print(f"Length of agg_df: {len(agg_df)}")
     df = create_target_variables(agg_df)
     df_games = df.drop_duplicates(subset=['game_id']).copy()
@@ -84,22 +84,22 @@ def chi2_test():
                         # Avoid division by zero
                         hit_rate = target_hits / games_worked if games_worked > 0 else 0
                         # Set a minimum game threshold (e.g., 30 games) to remove noise
-                        if games_worked >= 30:
-                            individual_results.append({
-                                "Target Variable": target,
-                                "Position": pos,
-                                "Official Name": official,
-                                "Games Worked": games_worked,
-                                "Hit Rate": round(hit_rate, 3),
-                                "P-Value": p_value,
-                                "Chi-Square Stat": chi2_stat
-                            })
+                        # if games_worked >= 30:
+                        individual_results.append({
+                            "Target Variable": target,
+                            "Position": pos,
+                            "Official Name": official,
+                            "Games Worked": games_worked,
+                            "Hit Rate": round(hit_rate, 3),
+                            "P-Value": p_value,
+                            "Chi-Square Stat": chi2_stat
+                        })
     # Convert the results to a DataFrame
     individual_results_df = pd.DataFrame(individual_results)
-    # # Sort by P-Value to see the most statistically significant individual referees at the top
-    # significant_individuals = individual_results_df.sort_values(by="P-Value")
-    # # Display the top 20 most significant individual trends
-    # print(significant_individuals.head(20).to_string(index=False))
+    # Sort by P-Value to see the most statistically significant individual referees at the top
+    significant_individuals = individual_results_df.sort_values(by="P-Value")
+    # Display the top 20 most significant individual trends
+    print(significant_individuals.head(20).to_string(index=False))
     # Calculate the total number of valid tests run
     total_tests = len(individual_results_df)
     # Apply Bonferroni Correction to find the true alpha
@@ -113,7 +113,7 @@ def chi2_test():
 
 
 def ttest_test():
-    df = gat.agg_game_info_pbp(2006, 2026)
+    df = gat.agg_game_info_pbp(2024, 2026)
     # Filter regular season plays with valid score differentials and spreads
     df_reg = df[(df["game_type"] == "REG") & df["qtr"].isin([1, 2, 3, 4])].copy()
 
@@ -124,16 +124,16 @@ def ttest_test():
         df_reg["penalty_type"].str.contains(penalty_pattern, case=False, na=False)
     )
 
-    # 1. Isolate the plays that actually matter
-    # We only want plays with a key penalty that actually shifted Win Probability
+    # Isolate the plays that actually matter
+    # Only want plays with a key penalty that actually shifted Win Probability
     high_leverage_penalties = df_reg[
         (df_reg["is_key_penalty"] == True) &
         (df_reg["vegas_home_wpa"].notna()) &
         (df_reg["qtr"] == 4)
     ].copy()
 
-    # 2. Setup for the T-Test
-    # We will focus on the Head Referee since they have the most discretionary power
+    # Setup for the T-Test
+    # Focus on the Head Referee since these fucks have the most discretionary power
     # over Roughing the Passer and often announce the final calls.
     target_wpa = "vegas_home_wpa"
     position = "Referee"
@@ -165,7 +165,7 @@ def ttest_test():
                 "P-Value": p_value
             })
 
-    # 3. Format and output the results
+    # Format and output the results
     wpa_df = pd.DataFrame(wpa_results)
 
     # Apply Bonferroni correction for the number of Referees tested
@@ -178,4 +178,5 @@ def ttest_test():
     print(significant_wpa.head(15).to_string(index=False))
 
 
+# chi2_test()
 ttest_test()

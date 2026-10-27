@@ -2,13 +2,21 @@ import nflreadpy as nfl
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import gathering as gat
 
 pd.set_option("display.max_columns", None)
 
 START_DATE = 2016
 # Load PBP Data and convert to Pandas
 years = list(range(START_DATE, 2027))
-df = nfl.load_pbp(years).to_pandas()
+# df = gat.agg_game_info_pbp(start_date=2016, end_date=2026)
+# print(f"Before dropping duplicates: {len(df)} lines.")
+# df = df.drop_duplicates(subset="play_id", keep="last")
+# print(f"After dropping duplicates: {len(df)} lines.")
+df_pbp = nfl.load_pbp(years).to_pandas()
+df_games = gat.get_schedules(start_date=START_DATE, end_date=2026)
+df_games = df_games[['game_id', 'game_type']]
+df = pd.merge(df_pbp, df_games, on='game_id', how='left')
 
 # Filter regular season plays with valid score differentials and spreads
 df_reg = df[
@@ -25,7 +33,7 @@ df_reg["is_key_penalty"] = (df_reg["penalty"] == 1) & (
     df_reg["penalty_type"].str.contains(penalty_pattern, case=False, na=False)
 )
 
-# 3. Calculate Live Cover Margin for Possession Team (posteam)
+# Calculate Live Cover Margin for Possession Team (posteam)
 df_reg["posteam_cover_margin"] = np.where(
     df_reg["posteam"] == df_reg["home_team"],
     df_reg["score_differential"] - df_reg["spread_line"],
@@ -42,7 +50,7 @@ df_reg["posteam_cover_status"] = np.where(
     ),
 )
 
-# 4. Identify Penalty Beneficiary Team
+# Identify Penalty Beneficiary Team
 df_reg["beneficiary_team"] = np.where(
     df_reg["penalty_team"] == df_reg["defteam"],
     df_reg["posteam"],
@@ -126,10 +134,10 @@ q4_yearly_ben["pct_benefited_trailing_q4_close"] = (
 # Merge yearly summaries into a single trend DataFrame
 yearly_trends = pd.DataFrame(
     {
-        "Overall % Flags Benefiting Trailing Team": overall_yearly_ben[
+        "Overall % Key Flags Benefiting Trailing Team": overall_yearly_ben[
             "pct_benefited_trailing_all_qtrs"
         ],
-        "Q4 Close-Spread % Flags Benefiting Trailing Team": q4_yearly_ben[
+        "Q4 Close-Spread % Key Flags Benefiting Trailing Team": q4_yearly_ben[
             "pct_benefited_trailing_q4_close"
         ],
     }
@@ -147,11 +155,12 @@ fig = px.line(
     yearly_trends,
     x="season",
     y=[
-        "Overall % Flags Benefiting Trailing Team",
-        "Q4 Close-Spread % Flags Benefiting Trailing Team",
+        "Overall % Key Flags Benefiting Trailing Team",
+        "Q4 Close-Spread % Key Flags Benefiting Trailing Team",
     ],
     markers=True,
-    title="Yearly Trend: % of Key Flags Benefiting Team Trailing Spread (2016–2026)",
+    title="% of Key Flags Benefiting Team Trailing Spread But Is At Least 8 Points Away From Covering (2016–present)",
+    subtitle="Key Flags = Pass Interference, Roughing the Passer, Holding",
     labels={
         "season": "Season",
         "value": "Percentage of Key Flags (%)",
