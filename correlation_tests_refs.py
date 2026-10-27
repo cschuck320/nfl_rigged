@@ -109,7 +109,6 @@ def chi2_test():
     print(f"Total Tests Run: {total_tests}")
     print(f"Adjusted P-Value Threshold: {adjusted_alpha:.6f}")
     print(true_significant_refs)
-    time.sleep(1)
 
 
 def ttest_test():
@@ -176,7 +175,3 @@ def ttest_test():
     significant_wpa = wpa_df.sort_values(by="Abs_T", ascending=False).drop(columns=['Abs_T'])
 
     print(significant_wpa.head(15).to_string(index=False))
-
-
-# chi2_test()
-ttest_test()

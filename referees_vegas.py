@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 
 pd.set_option("display.max_columns", None)
+pd.set_option("display.max_rows", None)
 
 # Load PBP Data & Game Schedules (2016–2026)
 years = list(range(2016, 2027))

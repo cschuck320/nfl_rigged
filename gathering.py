@@ -1,6 +1,4 @@
 import pandas as pd
-import numpy as np
-import plotly.io as pio
 import nflreadpy as nfl
 from nflreadpy.config import update_config
 
@@ -25,6 +23,7 @@ PBP_COLS = [
     "week",
     "posteam",  # String abbreviation for the team with possession.
     "posteam_type",  # String indicating whether the posteam team is home or away.
+    "defteam",  # String abbreviation for the team on defense.
     "quarter_seconds_remaining",
     "game_seconds_remaining",
     "sp",  # Binary indicator for whether or not a score occurred on the play.
@@ -56,12 +55,15 @@ PBP_COLS = [
     "third_down_failed",  # Binary indicator for if the posteam failed to convert first down on third down.
     "fourth_down_converted",  # Binary indicator for if the first down was converted on fourth down.
     "fourth_down_failed",  # Binary indicator for if the posteam failed to convert first down on fourth down.
+    "penalty",  # Binary indicator for whether or not a penalty occurred.
     "penalty_team",  # String abbreviation of the team with the penalty.
     "penalty_player_id",  # Unique identifier for the player with the penalty.
     "penalty_player_name",  # String name for the player with the penalty.
     "penalty_yards",  # Yards gained (or lost) by the posteam from the penalty.
     "penalty_type",  # String indicating the penalty type of the first penalty in the given play. Will be `NA` if `desc` is missing the type.
     "season",  # 4 digit number indicating to which season the game belongs to.
+    "away_score",  # Total points scored by the away team.
+    "home_score",  # Total points scored by the home team.
     "spread_line",  # The closing spread line for the game. A positive number means the home team was favored by that many points, a negative number means the away team was favored by that many points
     "total_line",  # The closing total line for the game
     "div_game",  # Binary indicator for if the given game was a division game.
@@ -75,9 +77,13 @@ def get_players():
     return nfl.load_players().to_pandas()
 
 
-# Data about which referees and officials were assigned to specific games.
 def get_officials():
-    # Get referee data
+    """
+    Obtains data about which referees and officials were assigned to specific games.
+    It also pivots from long-form to wide-form.
+
+    :return:
+    """
     df = nfl.load_officials().to_pandas()
     pivot_df = df.pivot(index="game_id", columns="position", values="official_name")
     # Drops any column where "Alternate" appears in the column name or MultiIndex tuple
@@ -90,7 +96,6 @@ def get_officials():
     pivot_df = pivot_df.drop(columns=["AL", "RA", "Replay Official"])
     # Fill missing Down Judge values with Head Linesman values
     pivot_df["Down Judge"] = pivot_df["Down Judge"].fillna(pivot_df["Head Linesman"])
-    # Drop the now-redundant Head Linesman column
     pivot_df = pivot_df.drop(columns=["Head Linesman"])
     # Fill remaining negligible nulls with a string placeholder
     minor_missing_cols = ["Field Judge", "Line Judge", "Umpire", "Down Judge"]
@@ -98,15 +103,32 @@ def get_officials():
     return pivot_df
 
 
-# Play by play data from 1999 to present
 def get_pbp(start_date, end_date):
+    """
+    Play by play data from 1999 to present. End date includes the year.
+
+    :param int start_date: Starting date.
+    :param int end_date: Ending date (+1 is automatically to include passed year).
+    :return pd.Dataframe: Pandas Dataframe of play-by-play data.
+    """
     print(f"Getting play-by-play data from {start_date} to {end_date}...")
     years = list(range(start_date, end_date+1))
-    return nfl.load_pbp(years).to_pandas()
+    df_pbp = nfl.load_pbp(years).to_pandas()
+    df_pbp = df_pbp[PBP_COLS]
+    df_sch = nfl.load_schedules(years).to_pandas()
+    df_sch = df_sch[["game_id", "game_type"]]
+    df = pd.merge(df_pbp, df_sch, on="game_id", how="left")
+    return df
 
 
-# Participation data for plays from NGS (starts from 2016)
 def get_pbp_participation(start_date, end_date):
+    """
+    Participation data for plays from NGS (starts from 2016)
+
+    :param int start_date: Starting date.
+    :param int end_date: Ending date (+1 is automatically to include passed year).
+    :return pd.DataFrame:
+    """
     print(f"Getting play-by-play participation from {start_date} to {end_date}...")
     years = list(range(start_date, end_date + 1))
     return nfl.load_participation(years).to_pandas()
@@ -154,7 +176,8 @@ def filter_columns(df, columns):
 
 
 def print_df_columns(dataframe):
-    # For finding the columns in a query.
+    """
+    For finding the columns in a query.
+    """
     for col in dataframe.columns:
         print(col)
-

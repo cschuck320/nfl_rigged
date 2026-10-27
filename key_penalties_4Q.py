@@ -3,14 +3,14 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 
-# 1. Load PBP data for 2024-2026
+# Load PBP data for 2024-2026
 df = nfl.load_pbp([2024, 2025, 2026]).to_pandas()
 
 # Filter for regular season standard quarters Q1-Q4
 df_reg = df[(df["qtr"].isin([1, 2, 3, 4]))].copy()
 
 # Define key judgment penalties (DPI, Roughing, Holding)
-penalty_pattern = "Roughing the Passer|Offensive Pass Interference|Defensive Pass Interference|Offensive Holding|Defensive Holding"
+penalty_pattern = "Roughing the Passer|Pass Interference|Holding"
 df_reg["is_key_penalty"] = (df_reg["penalty"] == 1) & (
     df_reg["penalty_type"].str.contains(penalty_pattern, case=False, na=False)
 )
